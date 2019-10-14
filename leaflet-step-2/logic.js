@@ -1,6 +1,6 @@
 // Store our API endpoint inside queryUrl
-// Use Activity geoJson activity 1-10 as reference  
 var queryUrl = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson";
+var plates_Url = "https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_plates.json";
 
 // Perform a GET request to the query URL
 d3.json(queryUrl, function(data) {
@@ -79,29 +79,42 @@ function createFeatures(earthquakeData) {
 function createMap(earthquakes) {
 
   // Define streetmap and darkmap layers
-  var lightmap = L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
+
+  var satellite = L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
+    attribution: "Map data &copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a> contributors, <a href=\"https://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>, Imagery © <a href=\"https://www.mapbox.com/\">Mapbox</a>",
+    maxZoom: 18,
+    id: "mapbox.satellite",
+    accessToken: API_KEY
+  });
+
+  var graymap = L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
     attribution: "Map data &copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a> contributors, <a href=\"https://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>, Imagery © <a href=\"https://www.mapbox.com/\">Mapbox</a>",
     maxZoom: 18,
     id: "mapbox.light",
     accessToken: API_KEY
   });
-
-  var darkmap = L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
+  var outdoors = L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
     attribution: "Map data &copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a> contributors, <a href=\"https://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>, Imagery © <a href=\"https://www.mapbox.com/\">Mapbox</a>",
     maxZoom: 18,
-    id: "mapbox.dark",
+    id: "mapbox.outdoors",
     accessToken: API_KEY
   });
 
   // Define a baseMaps object to hold our base layers
   var baseMaps = {
-    "Street Map": lightmap,
-    "Dark Map": darkmap
+   
+    "Satellite": satellite,
+    "Grayscale": graymap,
+    "Outdoors": outdoors
+
   };
+// creating new layer // source https://stackoverflow.com/questions/48804842/leaflet-creating-layergroups-dynamically
+  var faultLines = new L.LayerGroup();
 
   // Create overlay object to hold our overlay layer
   var overlayMaps = {
-    Earthquakes: earthquakes
+    "Earthquakes" : earthquakes,
+    "Faultlines" : faultLines,
   };
 
   // Create our map, giving it the streetmap and earthquakes layers to display on load
@@ -110,8 +123,18 @@ function createMap(earthquakes) {
       37.09, -95.71
     ],
     zoom: 5,
-    layers: [lightmap, earthquakes]
-  });
+    layers: [satellite, earthquakes, faultLines]
+  }).setView([37.8, -96], 4);;
+
+  d3.json(plates_Url, function(faults) {
+    // Adding our geoJSON data, along with style information to fault line layer 
+    // layer.
+    L.geoJson(faults, {
+      color: "blue",
+      weight: 4
+    })
+    .addTo(faultLines);
+});
 
   // Create a layer control
   // Pass in our baseMaps and overlayMaps
